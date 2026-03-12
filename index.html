@@ -124,7 +124,7 @@
             background: rgba(248, 113, 113, 0.5); 
         }
 
-        /* View Transitions */
+        /* View Transitions - Adjusted for smoother crossfade */
         .view-section {
             display: none;
             opacity: 0;
@@ -424,10 +424,12 @@
             isHost: false,
             isRemoteUpdate: false,
             typingTimeout: null,
+            remoteUpdateTimeout: null,
             connectionTimeout: null, 
+            scannerTimeout: null,
+            toastTimeout: null,
             userName: '', // Mandatory nickname
             isJoining: false, // Prevents double-join from scanner
-            qrErrorDebounce: false, // Throttles scanner error toasts
             
             // Premium public STUN servers for 100% reliable WebRTC connections over NAT
             peerConfig: {
@@ -488,6 +490,32 @@
                 window.app = this;
             },
 
+            // Notification Engine
+            showToast(message, type = 'info') {
+                this.els.toastMsg.textContent = message;
+                this.els.toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] transition-all duration-300 opacity-100 translate-y-0 pointer-events-none`;
+                
+                let borderClass, iconClass;
+                if (type === 'success') {
+                    borderClass = 'border-green-500/50'; iconClass = 'fas fa-check-circle text-green-400';
+                } else if (type === 'error') {
+                    borderClass = 'border-red-500/50'; iconClass = 'fas fa-exclamation-circle text-brand-400';
+                } else if (type === 'warning') {
+                    borderClass = 'border-yellow-500/50'; iconClass = 'fas fa-exclamation-triangle text-brand-accent';
+                } else {
+                    borderClass = 'border-brand-500/50'; iconClass = 'fas fa-info-circle text-brand-400';
+                }
+                
+                this.els.toast.firstElementChild.className = `glass-panel px-5 py-3 rounded-full flex items-center gap-3 shadow-2xl ${borderClass}`;
+                this.els.toastIcon.className = iconClass;
+
+                clearTimeout(this.toastTimeout);
+                this.toastTimeout = setTimeout(() => {
+                    this.els.toast.classList.remove('opacity-100', 'translate-y-0');
+                    this.els.toast.classList.add('opacity-0', 'translate-y-[-20px]');
+                }, 3000);
+            },
+
             // Get clean base URL avoiding ?join chaining
             getBaseUrl() {
                 return window.location.href.split('?')[0];
@@ -497,7 +525,7 @@
             validateName() {
                 const name = this.els.nicknameInput.value.trim().toUpperCase();
                 if (!name) {
-                    this.showToast("⚠️ Nickname is required!", "warning");
+                    this.showToast("⚠️ Nickname is required to connect!", "warning");
                     this.els.nicknameInput.focus();
                     return false;
                 }
@@ -511,27 +539,34 @@
                 const joinCode = urlParams.get('join');
                 if (joinCode && /^\d{5}$/.test(joinCode)) {
                     this.els.joinInput.value = joinCode.toUpperCase();
-                    // Alert user to enter name before joining
                     setTimeout(() => {
-                        this.showToast("Please enter a Nickname to join.", "info");
+                        this.showToast("Please enter a Nickname to join the workspace.", "info");
                         this.els.nicknameInput.focus();
-                    }, 800);
+                    }, 500);
                 }
             },
 
-            // UI Navigation
+            // UI Navigation - Smooth fade logic
             navigate(viewId) {
+                // Fade out current views
                 this.els.views.forEach(v => {
-                    v.classList.remove('active');
-                    setTimeout(() => v.style.display = 'none', 300); 
+                    if(v.classList.contains('active')) {
+                        v.classList.remove('active');
+                        setTimeout(() => { v.style.display = 'none'; }, 300);
+                    } else {
+                        v.style.display = 'none';
+                    }
                 });
                 
+                // Fade in target view
                 setTimeout(() => {
                     const target = document.getElementById(`view-${viewId}`);
-                    target.style.display = 'flex';
-                    void target.offsetWidth; 
-                    target.classList.add('active');
-                }, 300);
+                    if (target) {
+                        target.style.display = 'flex';
+                        void target.offsetWidth; // Force DOM reflow
+                        target.classList.add('active');
+                    }
+                }, 310);
 
                 if (viewId !== 'scanner' && this.html5QrcodeScanner) {
                     this.closeScanner();
@@ -575,7 +610,6 @@
                     this.els.waitingOverlay.classList.add('hidden');
                     this.els.waitingOverlay.classList.remove('flex');
                     this.els.textarea.disabled = false;
-                    this.els.textarea.focus();
                 }
                 
                 // Update Modal info
@@ -595,14 +629,25 @@
                 });
             },
 
+            // Cleans up any existing peer object before starting a new one
+            cleanupPeer() {
+                this.connections.forEach(c => c.close());
+                this.connections.clear();
+                if (this.peer) {
+                    this.peer.destroy();
+                    this.peer = null;
+                }
+            },
+
             // ======= P2P HOSTING (PeerJS) =======
             createSession() {
                 if (!this.validateName()) return;
 
+                this.cleanupPeer();
+
                 const code = this.generateCode();
                 this.currentSessionId = code;
                 this.isHost = true;
-                this.connections.clear();
                 this.bannedPeers.clear();
                 
                 const originalText = this.els.btnCreate.innerHTML;
@@ -623,7 +668,7 @@
                     
                     this.navigate('editor');
                     this.updateConnectionUI();
-                    this.showToast("Room open. Share the 5-digit code.", "success");
+                    this.showToast("Workspace created. Share the 5-digit code.", "success");
                 });
 
                 // When ANY client joins the host
@@ -653,14 +698,12 @@
                     };
 
                     // PeerJS 'open' event can sometimes fail to fire for the host. 
-                    // We attach it, but also use 'data' as a fallback failsafe.
                     conn.on('open', () => {
                         handleOpen(conn.metadata?.name);
                     });
 
                     conn.on('data', (payload) => {
-                        // BUG FIX: If data arrives, connection is DEFINITELY open. 
-                        // Force handshake if 'open' event was missed by PeerJS.
+                        // Failsafe: If data arrives, connection is DEFINITELY open.
                         if (!isOpened) {
                             handleOpen(payload.name || conn.metadata?.name);
                         }
@@ -699,7 +742,6 @@
                 });
 
                 this.peer.on('error', (err) => {
-                    console.error("Host Error:", err);
                     this.els.btnCreate.innerHTML = originalText;
                     this.els.btnCreate.disabled = false;
                     
@@ -726,9 +768,9 @@
             },
 
             joinSessionCore(code) {
+                this.cleanupPeer();
                 this.currentSessionId = code;
                 this.isHost = false;
-                this.connections.clear();
 
                 const originalText = this.els.btnJoin.innerHTML;
                 this.els.btnJoin.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -739,9 +781,7 @@
                 this.connectionTimeout = setTimeout(() => {
                     if (this.els.btnJoin.disabled) {
                         this.showToast("Connection timed out. Host may be offline.", "error");
-                        this.els.btnJoin.innerHTML = originalText;
-                        this.els.btnJoin.disabled = false;
-                        this.disconnect();
+                        this.disconnect(); // This restores button states
                     }
                 }, 10000); // 10-second max wait
 
@@ -762,8 +802,10 @@
                         if (isOpened) return;
                         isOpened = true;
                         
-                        clearTimeout(this.connectionTimeout); // Success, clear timeout
+                        clearTimeout(this.connectionTimeout); 
                         
+                        // Register host as a visually named peer for the client
+                        conn.customName = 'Host (Admin)';
                         this.connections.set(conn.peer, conn);
                         
                         this.els.btnJoin.innerHTML = '<i class="fas fa-arrow-right"></i>';
@@ -790,9 +832,8 @@
                     });
 
                     conn.on('close', () => {
-                        // The host triggers close when the session ends gracefully.
-                        // (Kicked logic is handled via 'data' event before close).
-                        if(this.currentSessionId) {
+                        // Check if we are actively in the session, not naturally disconnecting
+                        if(this.currentSessionId && this.connections.has(conn.peer)) {
                             this.showToast("Host ended the session.", "warning");
                             this.disconnect();
                         }
@@ -800,16 +841,13 @@
 
                     conn.on('error', (err) => {
                          clearTimeout(this.connectionTimeout);
-                         this.els.btnJoin.innerHTML = originalText;
-                         this.els.btnJoin.disabled = false;
                          this.showToast("Connection dropped.", "error");
+                         this.disconnect();
                     });
                 });
 
                 this.peer.on('error', (err) => {
                     clearTimeout(this.connectionTimeout);
-                    this.els.btnJoin.innerHTML = originalText;
-                    this.els.btnJoin.disabled = false;
                     
                     if (err.type === 'peer-unavailable') {
                         this.showToast(`Workspace ${code} not found or closed.`, "error");
@@ -851,21 +889,30 @@
 
                 this.isRemoteUpdate = true;
                 
+                const start = this.els.textarea.selectionStart;
+                const end = this.els.textarea.selectionEnd;
+                const oldLength = this.els.textarea.value.length;
+
                 this.els.textarea.value = newText || "";
                 this.els.charCount.textContent = `${this.els.textarea.value.length} chars`;
                 
                 try {
-                    // BUG FIX: Automatically force the cursor/blinking line to the very end 
-                    // of the document when receiving an update, so writing is seamless.
-                    const textLength = this.els.textarea.value.length;
-                    this.els.textarea.focus(); 
-                    this.els.textarea.setSelectionRange(textLength, textLength);
-                    this.els.textarea.scrollTop = this.els.textarea.scrollHeight; // Auto-scroll downward
+                    // Smart Cursor Logic:
+                    // If user was previously typing at the very end of the doc, keep cursor at the end.
+                    // Otherwise, maintain their specific cursor location so they aren't interrupted.
+                    if (start === oldLength) {
+                        const newLength = this.els.textarea.value.length;
+                        this.els.textarea.setSelectionRange(newLength, newLength);
+                        this.els.textarea.scrollTop = this.els.textarea.scrollHeight;
+                    } else {
+                        this.els.textarea.setSelectionRange(start, end);
+                    }
                 } catch(e){} 
 
                 this.els.syncStatusText.innerHTML = `<i class="fas fa-bolt text-brand-accent mr-2"></i> Incoming update applied`;
                 
-                setTimeout(() => { this.isRemoteUpdate = false; }, 50);
+                clearTimeout(this.remoteUpdateTimeout);
+                this.remoteUpdateTimeout = setTimeout(() => { this.isRemoteUpdate = false; }, 50);
             },
 
             clearText() {
@@ -914,14 +961,13 @@
             disconnect() {
                 clearTimeout(this.connectionTimeout);
 
-                // Close all peer connections gracefully
-                this.connections.forEach(c => c.close());
-                this.connections.clear();
+                // Instantly restore buttons
+                this.els.btnCreate.innerHTML = 'Start Hosting';
+                this.els.btnCreate.disabled = false;
+                this.els.btnJoin.innerHTML = '<i class="fas fa-arrow-right"></i>';
+                this.els.btnJoin.disabled = false;
 
-                if (this.peer) {
-                    this.peer.destroy();
-                    this.peer = null;
-                }
+                this.cleanupPeer();
                 
                 this.currentSessionId = null;
                 this.isHost = false;
@@ -930,6 +976,7 @@
                 this.els.joinInput.value = '';
                 this.isJoining = false;
                 
+                // Clear URL params gracefully
                 if(window.location.search.includes('join=')) {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
@@ -940,12 +987,16 @@
 
             // Handles the Banned/Removed specific UI popup
             showRemovedPopup(hostName) {
-                // Cleanly disconnect without triggering standard leave messages
-                this.disconnect(); 
+                // Cleanly disconnect locally without triggering another 'leave' message
+                this.cleanupPeer();
+                this.currentSessionId = null;
+                this.isHost = false;
+                this.isJoining = false;
                 
                 this.els.removedHostName.textContent = hostName || 'the Host';
                 
-                // Ensure it pops up after the view transition to home completes
+                this.navigate('home');
+                
                 setTimeout(() => {
                     this.els.removedModal.classList.remove('hidden');
                     this.els.removedModal.classList.add('flex');
@@ -993,7 +1044,8 @@
 
                 this.navigate('scanner');
                 
-                setTimeout(() => {
+                clearTimeout(this.scannerTimeout);
+                this.scannerTimeout = setTimeout(() => {
                     if (this.html5QrcodeScanner == null) {
                         this.html5QrcodeScanner = new Html5Qrcode("qr-reader");
                     }
@@ -1015,7 +1067,6 @@
                                 if (joinParam && /^\d{5}$/.test(joinParam)) parsedCode = joinParam;
                             } catch(e) { }
 
-                            // If URL parsing didn't find it, look for ANY 5 digit number in the scan
                             if (!parsedCode) {
                                 const match = decodedText.match(/(?<!\d)\d{5}(?!\d)/);
                                 if (match) parsedCode = match[0];
@@ -1025,22 +1076,16 @@
                                 this.isJoining = true;
                                 this.showToast("QR Code recognized!", "success");
                                 
-                                // Extremely safe camera stop - never blocks the join process
+                                // Safely stop camera and execute join
                                 try {
                                     this.html5QrcodeScanner.stop().catch(e => {}).finally(() => {
                                         this.joinSessionCore(parsedCode);
-                                        setTimeout(() => { this.isJoining = false; }, 2000);
                                     });
                                 } catch(e) {
                                     this.joinSessionCore(parsedCode);
-                                    this.isJoining = false;
                                 }
                             } else {
-                                if(!this.qrErrorDebounce) {
-                                    this.showToast("Invalid SyncNotes QR code.", "error");
-                                    this.qrErrorDebounce = true;
-                                    setTimeout(() => { this.qrErrorDebounce = false; }, 3000);
-                                }
+                                this.showToast("Invalid SyncNotes QR code.", "error");
                             }
                         },
                         (errorMessage) => { }
@@ -1048,10 +1093,11 @@
                         this.showToast("Camera access denied or busy.", "error");
                         this.navigate('home');
                     });
-                }, 400); // Wait for CSS transition to finish before attaching camera
+                }, 400); // Wait for CSS transition to finish
             },
 
             closeScanner() {
+                clearTimeout(this.scannerTimeout);
                 if (this.html5QrcodeScanner) {
                     try {
                         this.html5QrcodeScanner.stop().catch(e => {}).finally(() => {
@@ -1120,15 +1166,17 @@
                 if(c) {
                     // Add to ban list so they cannot instantly rejoin
                     this.bannedPeers.add(peerId);
-                    
                     const name = c.customName || 'User';
                     
-                    // Send kicked message allowing client to cleanly display overlay
-                    c.send({type: 'kicked', hostName: this.userName});
+                    // Send kicked message
+                    if (c.open) c.send({type: 'kicked', hostName: this.userName});
+                    
+                    // Critical Fix: Remove from map immediately so the 'close' event 
+                    // doesn't trigger a secondary "User left" notification.
+                    this.connections.delete(peerId);
                     
                     setTimeout(() => {
                         c.close();
-                        this.connections.delete(peerId);
                         this.updateConnectionUI();
                         this.broadcastNotification(`${name} was removed by the Host.`);
                     }, 200);
@@ -1212,9 +1260,11 @@
             document.addEventListener('click', (e) => {
                 const overlay = document.getElementById('editor-qr-overlay');
                 const trigger = document.querySelector('[title="Show QR Code"]');
+                
+                // Critical Fix: Safe check for trigger existence before calling contains
                 if (!overlay.classList.contains('hidden') && 
                     !overlay.contains(e.target) && 
-                    !trigger && trigger.contains(e.target)) {
+                    (!trigger || !trigger.contains(e.target))) {
                     overlay.classList.add('hidden');
                 }
 
