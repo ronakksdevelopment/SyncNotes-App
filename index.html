@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SyncNotes | P2P Real-Time Text</title>
+    <title>SyncNotes | Secure P2P Workspace</title>
     
     <!-- Favicon -->
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/4438/4438839.png" type="image/png">
 
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,7 +32,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Poppins', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
@@ -41,20 +41,22 @@
                             500: '#ef4444', // Red 500
                             600: '#dc2626', // Red 600
                             accent: '#fbbf24', // Amber/Yellow 400
-                            paper: '#fef3c7' // Light Beige/Yellow 50
+                            paper: '#fffbeb', // Light Beige/Yellow 50
+                            dark: '#0b1120'  // Deep professional slate
                         }
                     },
                     animation: {
-                        'blob': 'blob 7s infinite',
-                        'fade-in': 'fadeIn 0.5s ease-out forwards',
-                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'blob': 'blob 10s infinite',
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s ease-out forwards',
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'modal-enter': 'modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                     },
                     keyframes: {
                         blob: {
                             '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.05)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.95)' },
                             '100%': { transform: 'translate(0px, 0px) scale(1)' },
                         },
                         fadeIn: {
@@ -64,6 +66,10 @@
                         slideUp: {
                             '0%': { opacity: '0', transform: 'translateY(20px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        modalEnter: {
+                            '0%': { opacity: '0', transform: 'scale(0.95)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
                         }
                     }
                 }
@@ -73,7 +79,7 @@
 
     <style>
         body {
-            background-color: #0f172a; /* Keeping slate dark for sleek professional contrast */
+            background-color: #0b1120;
             color: #f8fafc;
             overflow-x: hidden;
         }
@@ -81,48 +87,48 @@
         /* Glassmorphism utilities */
         .glass-panel {
             background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
         }
 
         .glass-input {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.25);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .glass-input:focus {
             outline: none;
             border-color: #ef4444;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
             background: rgba(0, 0, 0, 0.4);
         }
 
-        /* Custom Scrollbar - Warm Theme */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(248, 113, 113, 0.5); /* Red hover */
+            background: rgba(248, 113, 113, 0.5); 
         }
 
         /* View Transitions */
         .view-section {
             display: none;
             opacity: 0;
-            transition: opacity 0.4s ease-in-out;
+            transition: opacity 0.3s ease-in-out;
         }
         .view-section.active {
             display: flex;
@@ -143,101 +149,99 @@
             background: rgba(0,0,0,0.5);
         }
 
-        /* Animated Background Orbs - Red & Amber Theme */
-        .bg-orb {
+        /* Background Design */
+        .bg-gradient-spot {
             position: absolute;
             border-radius: 50%;
-            filter: blur(80px);
+            filter: blur(100px);
             z-index: -1;
-            opacity: 0.5;
+            opacity: 0.3;
         }
-        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #7f1d1d; animation: blob 15s infinite alternate; }
-        .orb-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: #78350f; animation: blob 12s infinite alternate-reverse; }
-        .orb-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: #450a0a; animation: blob 18s infinite alternate; }
+        .spot-red { top: -10%; left: -5%; width: 40vw; height: 40vw; background: #991b1b; animation: blob 15s infinite alternate; }
+        .spot-amber { bottom: -10%; right: -5%; width: 35vw; height: 35vw; background: #92400e; animation: blob 12s infinite alternate-reverse; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col relative antialiased selection:bg-brand-500 selection:text-white">
 
-    <!-- Background Animations -->
+    <!-- Background -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none z-[-1]">
-        <div class="bg-orb orb-1"></div>
-        <div class="bg-orb orb-2"></div>
-        <div class="bg-orb orb-3"></div>
+        <div class="bg-gradient-spot spot-red"></div>
+        <div class="bg-gradient-spot spot-amber"></div>
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiLz48L3N2Zz4=')] opacity-50 z-[-1]"></div>
     </div>
 
-    <!-- Global Toast Notification -->
-    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none">
-        <div class="glass-panel px-6 py-3 rounded-full flex items-center gap-3 shadow-lg border-brand-500/50">
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none">
+        <div class="glass-panel px-5 py-3 rounded-full flex items-center gap-3 shadow-2xl border-white/10">
             <i id="toast-icon" class="fas fa-info-circle text-brand-400"></i>
             <span id="toast-message" class="text-sm font-medium tracking-wide">Notification</span>
         </div>
     </div>
 
     <!-- Header -->
-    <header class="w-full p-6 flex justify-between items-center z-10 animate-fade-in">
-        <div class="flex items-center gap-3 cursor-pointer" onclick="app.disconnect()">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-accent flex items-center justify-center shadow-lg shadow-brand-500/30 p-2">
+    <header class="w-full px-6 py-5 flex justify-between items-center z-10 animate-fade-in">
+        <div class="flex items-center gap-3 cursor-pointer group" onclick="app.disconnect()">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-400 to-brand-accent flex items-center justify-center shadow-lg shadow-brand-500/20 p-2 group-hover:scale-105 transition-transform">
                 <img src="https://cdn-icons-png.flaticon.com/512/4438/4438839.png" alt="SyncNotes Logo" class="w-full h-full object-contain filter drop-shadow-md">
             </div>
-            <h1 class="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Sync<span class="text-brand-400">Notes</span></h1>
+            <h1 class="text-2xl font-bold tracking-tight text-white">Sync<span class="text-brand-400">Notes</span></h1>
         </div>
-        <div class="flex gap-4 items-center">
-            <div id="connection-status" class="hidden items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-yellow-500/30 text-yellow-400">
-                <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
-                <span class="opacity-90 font-medium" id="status-label">Waiting for Peer</span>
-            </div>
+        <div class="flex gap-3 items-center">
+            <!-- Active Connections Counter (Visible in Editor) -->
+            <button id="connection-status" onclick="app.openPeersModal()" class="hidden items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
+                <div id="status-dot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                <span class="opacity-90 font-medium group-hover:text-white transition-colors" id="status-label">Waiting</span>
+            </button>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-6xl mx-auto">
+    <main class="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-5xl mx-auto">
         
         <!-- View: HOME (Join or Create) -->
-        <section id="view-home" class="view-section active flex-col items-center w-full max-w-4xl gap-8 animate-slide-up">
-            <div class="text-center mb-4">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold tracking-wider uppercase mb-4">
-                    <i class="fas fa-lock text-[10px]"></i> 100% P2P Private
+        <section id="view-home" class="view-section active flex-col items-center w-full gap-10 animate-slide-up">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold tracking-wider uppercase mb-5">
+                    <i class="fas fa-shield-alt text-[10px]"></i> Serverless P2P Security
                 </div>
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">Direct Device Sync</h2>
-                <p class="text-gray-400 text-lg max-w-xl mx-auto">Connect devices directly. Notes are transferred Peer-to-Peer and vanish when you close the tab. No servers, no traces.</p>
+                <h2 class="text-4xl md:text-6xl font-extrabold mb-5 tracking-tight">Direct Device Sync</h2>
+                <p class="text-slate-400 text-lg max-w-2xl mx-auto font-light leading-relaxed">Connect multiple devices directly. Notes are transferred securely via Peer-to-Peer and vanish the moment you close the tab.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
                 <!-- Create Session Card -->
-                <div class="glass-panel rounded-3xl p-8 flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-b from-brand-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 rounded-2xl bg-brand-500/20 text-brand-400 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform relative z-10">
-                        <i class="fas fa-satellite-dish"></i>
+                <div class="glass-panel rounded-3xl p-8 flex flex-col items-center text-center group transition-all duration-300 hover:bg-white/[0.04]">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center text-2xl mb-6 shadow-inner border border-brand-500/20">
+                        <i class="fas fa-laptop-house"></i>
                     </div>
-                    <h3 class="text-2xl font-semibold mb-2 relative z-10">Host Session</h3>
-                    <p class="text-gray-400 mb-8 text-sm relative z-10">Generate a unique code and QR to host a direct connection from this device.</p>
-                    <button id="btn-create" onclick="app.createSession()" class="mt-auto w-full py-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white font-semibold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all transform hover:scale-[1.02] relative z-10">
+                    <h3 class="text-2xl font-semibold mb-3 text-white">Host a Workspace</h3>
+                    <p class="text-slate-400 mb-8 text-sm leading-relaxed">Create a secure room. Generate a 5-digit code to invite multiple devices to collaborate.</p>
+                    <button id="btn-create" onclick="app.createSession()" class="mt-auto w-full py-3.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white font-medium shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all active:scale-[0.98]">
                         Start Hosting
                     </button>
                 </div>
 
                 <!-- Join Session Card -->
-                <div class="glass-panel rounded-3xl p-8 flex flex-col items-center text-center group hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-b from-brand-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 rounded-2xl bg-brand-accent/20 text-brand-accent flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform relative z-10">
+                <div class="glass-panel rounded-3xl p-8 flex flex-col items-center text-center group transition-all duration-300 hover:bg-white/[0.04]">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-accent/10 text-brand-accent flex items-center justify-center text-2xl mb-6 shadow-inner border border-brand-accent/20">
                         <i class="fas fa-link"></i>
                     </div>
-                    <h3 class="text-2xl font-semibold mb-2 relative z-10">Join Session</h3>
-                    <p class="text-gray-400 mb-6 text-sm relative z-10">Enter a code or scan a QR code from the host to connect directly.</p>
+                    <h3 class="text-2xl font-semibold mb-3 text-white">Join Workspace</h3>
+                    <p class="text-slate-400 mb-6 text-sm leading-relaxed">Enter a 5-digit code or scan the host's QR code to link your device instantly.</p>
                     
-                    <div class="w-full flex flex-col gap-3 mt-auto relative z-10">
+                    <div class="w-full flex flex-col gap-3 mt-auto">
                         <div class="relative w-full">
-                            <input type="text" id="join-code-input" placeholder="Enter 6-digit code" maxlength="6" class="w-full glass-input py-4 pl-6 pr-12 rounded-xl text-center font-mono text-xl tracking-[0.2em] uppercase placeholder:normal-case placeholder:tracking-normal placeholder:text-sm focus:border-brand-accent">
-                            <button id="btn-join" onclick="app.joinWithCode()" class="absolute right-2 top-2 bottom-2 aspect-square rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                            <input type="text" id="join-code-input" placeholder="Enter 5-digit code" maxlength="5" class="w-full glass-input py-3.5 pl-5 pr-12 rounded-xl text-center font-mono text-xl tracking-[0.25em] text-brand-accent focus:border-brand-accent transition-all">
+                            <button id="btn-join" onclick="app.joinWithCode()" class="absolute right-2 top-2 bottom-2 aspect-square rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors active:scale-95">
                                 <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
-                        <div class="flex items-center gap-3 w-full my-1">
-                            <div class="h-px bg-white/10 flex-grow"></div>
-                            <span class="text-xs text-gray-500 font-medium uppercase">or</span>
-                            <div class="h-px bg-white/10 flex-grow"></div>
+                        <div class="flex items-center gap-4 w-full my-2">
+                            <div class="h-px bg-white/5 flex-grow"></div>
+                            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">or</span>
+                            <div class="h-px bg-white/5 flex-grow"></div>
                         </div>
-                        <button onclick="app.openScanner()" class="w-full py-4 rounded-xl glass-panel border border-brand-accent/30 text-brand-accent hover:bg-brand-accent/10 font-semibold transition-all flex items-center justify-center gap-2">
+                        <button onclick="app.openScanner()" class="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 font-medium transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
                             <i class="fas fa-qrcode"></i> Scan QR Code
                         </button>
                     </div>
@@ -245,12 +249,12 @@
             </div>
 
             <!-- Recent Sessions -->
-            <div id="recent-sessions-container" class="w-full hidden flex-col gap-4 mt-8">
-                <div class="flex justify-between items-end pl-2 pr-2">
-                    <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Peers</h4>
-                    <button onclick="app.clearHistory()" class="text-xs text-brand-400 hover:text-brand-500 transition-colors">Clear</button>
+            <div id="recent-sessions-container" class="w-full max-w-4xl hidden flex-col gap-3 mt-4">
+                <div class="flex justify-between items-end px-1">
+                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Recent Connections</h4>
+                    <button onclick="app.clearHistory()" class="text-xs text-brand-400 hover:text-brand-300 transition-colors font-medium">Clear History</button>
                 </div>
-                <div id="recent-sessions-list" class="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                <div id="recent-sessions-list" class="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                     <!-- Populated by JS -->
                 </div>
             </div>
@@ -259,108 +263,135 @@
         <!-- View: SCANNER -->
         <section id="view-scanner" class="view-section flex-col items-center w-full max-w-md animate-slide-up">
             <div class="glass-panel rounded-3xl p-6 w-full flex flex-col items-center relative overflow-hidden">
-                <button onclick="app.closeScanner()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 z-10">
-                    <i class="fas fa-times"></i>
+                <button onclick="app.closeScanner()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors z-10">
+                    <i class="fas fa-times text-sm"></i>
                 </button>
-                <h3 class="text-xl font-semibold mb-6 flex items-center gap-2"><i class="fas fa-camera text-brand-400"></i> Scan to Link</h3>
+                <h3 class="text-xl font-semibold mb-6 flex items-center gap-2 text-white"><i class="fas fa-camera text-brand-400"></i> Scan to Join</h3>
                 
-                <div id="qr-reader" class="w-full aspect-square bg-black/50 rounded-2xl overflow-hidden shadow-inner mb-6 relative">
-                    <!-- Scanner injects here -->
+                <div id="qr-reader" class="w-full aspect-square bg-black/40 rounded-2xl overflow-hidden shadow-inner mb-6 relative border border-white/5">
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div class="w-48 h-48 border-2 border-brand-400/50 rounded-xl"></div>
                     </div>
                 </div>
                 
-                <p class="text-sm text-gray-400 text-center">Point your camera at the SyncNotes QR code displayed on the host device.</p>
+                <p class="text-sm text-slate-400 text-center">Point your camera at the Host's screen.</p>
             </div>
         </section>
 
         <!-- View: EDITOR / SESSION -->
-        <section id="view-editor" class="view-section flex-col w-full h-[80vh] max-h-[800px] animate-slide-up">
-            <div class="glass-panel rounded-3xl flex flex-col w-full h-full overflow-hidden shadow-2xl border-white/10 relative transition-colors duration-500" id="editor-container">
+        <section id="view-editor" class="view-section flex-col w-full h-[85vh] max-h-[900px] animate-slide-up">
+            <div class="glass-panel rounded-3xl flex flex-col w-full h-full overflow-hidden shadow-2xl border-white/10 relative transition-colors duration-500 bg-black/20" id="editor-container">
                 
                 <!-- Overlay for "Waiting for peer" -->
-                <div id="waiting-overlay" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300">
-                    <div class="w-20 h-20 rounded-full bg-brand-500/20 flex items-center justify-center mb-6 animate-pulse-slow">
-                        <i class="fas fa-wifi text-3xl text-brand-400"></i>
+                <div id="waiting-overlay" class="absolute inset-0 bg-brand-dark/95 backdrop-blur-xl z-30 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300">
+                    <div class="w-24 h-24 rounded-full bg-brand-500/10 flex items-center justify-center mb-6 animate-pulse-slow border border-brand-500/20">
+                        <i class="fas fa-wifi text-4xl text-brand-400"></i>
                     </div>
-                    <h3 class="text-2xl font-bold mb-2">Waiting for connection...</h3>
-                    <p class="text-gray-400 mb-8 max-w-sm">Share this code or let the other device scan the QR to establish a direct P2P link.</p>
+                    <h3 class="text-3xl font-bold mb-3 text-white tracking-tight">Ready to Sync</h3>
+                    <p class="text-slate-400 mb-8 max-w-md text-lg font-light">Share your 5-digit code or let others scan the QR to establish a direct link.</p>
                     
-                    <div class="bg-black/40 border border-white/10 p-6 rounded-2xl flex flex-col items-center gap-4">
-                        <div id="waiting-qrcode" class="bg-brand-paper p-3 rounded-xl shadow-inner"></div>
-                        <div class="flex items-center gap-3 bg-brand-500/20 border border-brand-500/30 px-5 py-3 rounded-xl cursor-pointer hover:bg-brand-500/30 transition-colors" onclick="app.copySessionCode()">
-                            <span id="waiting-session-code" class="font-mono text-3xl font-bold tracking-widest text-brand-400">------</span>
-                            <i class="far fa-copy text-gray-300 ml-2"></i>
+                    <div class="bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col items-center gap-6 shadow-xl">
+                        <div id="waiting-qrcode" class="bg-brand-paper p-4 rounded-2xl shadow-inner"></div>
+                        <div class="flex items-center gap-4 bg-black/40 border border-white/5 px-6 py-4 rounded-2xl">
+                            <span class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Code</span>
+                            <span id="waiting-session-code" class="font-mono text-4xl font-bold tracking-[0.15em] text-brand-accent">-----</span>
                         </div>
+                        <button onclick="app.copySessionShare()" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition-colors flex items-center justify-center gap-2 active:scale-95">
+                            SyncNotes Link
+                        </button>
                     </div>
                     
-                    <button onclick="app.disconnect()" class="mt-8 px-6 py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors font-medium">
-                        Cancel Hosting
+                    <button onclick="app.disconnect()" class="mt-8 px-6 py-2.5 rounded-full text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium">
+                        Cancel Session
                     </button>
                 </div>
 
                 <!-- Editor Header -->
-                <div class="w-full bg-black/20 border-b border-white/5 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-20">
-                    <div class="flex items-center gap-4">
+                <div class="w-full bg-black/40 border-b border-white/5 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-20">
+                    <div class="flex items-center gap-3">
                         <div class="bg-brand-500/10 border border-brand-500/20 px-4 py-2 rounded-xl flex items-center gap-3">
-                            <span class="text-xs text-gray-400 uppercase tracking-wider">Peer ID:</span>
-                            <span id="display-session-code" class="font-mono text-xl font-bold tracking-widest text-brand-400">------</span>
+                            <span class="text-xs text-brand-400/80 uppercase tracking-widest font-semibold">Code</span>
+                            <span id="display-session-code" class="font-mono text-xl font-bold tracking-widest text-white">-----</span>
                         </div>
                         
-                        <button onclick="app.toggleEditorQR()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-brand-accent hover:bg-white/10 transition-colors" title="Show QR Code">
+                        <button onclick="app.toggleEditorQR()" class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition-colors active:scale-95" title="Show QR Code">
                             <i class="fas fa-qrcode"></i>
+                        </button>
+                        <button onclick="app.copySessionShare()" class="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition-colors active:scale-95" title="Copy Invite Link">
+                            <i class="fas fa-share-alt"></i>
                         </button>
                     </div>
 
                     <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                        <button onclick="app.clearText()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <button onclick="app.clearText()" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
                             <i class="fas fa-eraser"></i> Clear
                         </button>
-                        <button onclick="app.copyText()" class="px-4 py-2 rounded-lg text-sm font-medium text-brand-400 hover:bg-brand-400/10 transition-colors flex items-center gap-2 whitespace-nowrap">
-                            <i class="fas fa-copy"></i> Copy
+                        <button onclick="app.copyText()" class="px-4 py-2 rounded-lg text-sm font-medium bg-white/5 text-white hover:bg-white/10 transition-colors flex items-center gap-2 whitespace-nowrap active:scale-95">
+                            <i class="fas fa-copy"></i> Copy Note
                         </button>
-                        <button onclick="app.disconnect()" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-2 whitespace-nowrap border border-red-500/20 ml-auto sm:ml-0">
-                            <i class="fas fa-times"></i> Close Sync
+                        <button onclick="app.disconnect()" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 whitespace-nowrap border border-red-500/20 ml-auto sm:ml-0 active:scale-95">
+                            <i class="fas fa-sign-out-alt"></i> Leave
                         </button>
                     </div>
                 </div>
 
                 <!-- Floating QR Overlay -->
                 <div id="editor-qr-overlay" class="absolute top-20 left-4 z-40 hidden">
-                    <div class="glass-panel rounded-2xl p-4 shadow-2xl border-brand-accent/30 animate-fade-in flex flex-col items-center">
+                    <div class="glass-panel rounded-2xl p-4 shadow-2xl border-white/10 animate-fade-in flex flex-col items-center">
                         <div id="editor-qrcode" class="bg-brand-paper p-2 rounded-xl"></div>
-                        <span class="text-xs text-gray-400 mt-3 font-medium">Scan to join</span>
+                        <span class="text-xs text-slate-400 mt-3 font-medium">Scan to join</span>
                     </div>
                 </div>
 
                 <!-- Text Area -->
-                <textarea id="sync-textarea" class="w-full flex-grow bg-transparent text-gray-100 p-6 sm:p-8 resize-none focus:outline-none text-lg leading-relaxed placeholder:text-gray-600 font-sans custom-scrollbar relative z-20" placeholder="Direct P2P connection established. Type or paste your notes here..."></textarea>
+                <textarea id="sync-textarea" class="w-full flex-grow bg-transparent text-slate-100 p-6 sm:p-8 resize-none focus:outline-none text-lg leading-relaxed placeholder:text-slate-600 font-sans custom-scrollbar relative z-20" placeholder="Connection secure. Type your notes here..."></textarea>
                 
                 <!-- Typing indicator -->
-                <div class="h-8 px-6 flex items-center bg-black/20 text-xs text-brand-400/70 font-medium tracking-wide border-t border-white/5 relative z-20">
-                    <span id="sync-status-text"><i class="fas fa-shield-alt mr-2 text-green-400"></i> Encrypted P2P Link Active</span>
+                <div class="h-10 px-6 flex items-center bg-black/40 text-xs font-medium tracking-wide border-t border-white/5 relative z-20 justify-between">
+                    <span id="sync-status-text" class="text-brand-400/80"><i class="fas fa-shield-alt mr-2 text-green-400"></i> E2E Encrypted</span>
+                    <span id="char-count" class="text-slate-500 font-mono">0 chars</span>
                 </div>
             </div>
         </section>
 
     </main>
 
+    <!-- Peers Management Modal -->
+    <div id="peers-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-brand-dark/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+        <div class="glass-panel p-6 rounded-3xl w-full max-w-sm m-4 transform scale-95 transition-transform duration-300 bg-slate-900/50">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-xl font-bold text-white">Connected Devices</h3>
+                <span id="modal-peer-count" class="bg-brand-500/20 text-brand-400 px-3 py-1 rounded-full text-xs font-bold border border-brand-500/20">0</span>
+            </div>
+            
+            <div id="peers-list" class="space-y-2 mb-6 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                <!-- Peer items injected here -->
+            </div>
+            
+            <button onclick="app.closePeersModal()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors border border-white/5">Close Panel</button>
+        </div>
+    </div>
+
     <!-- Footer Developer Mention -->
-    <footer class="w-full p-4 text-center z-10 animate-fade-in mt-auto">
-        <p class="text-xs text-gray-400 font-medium tracking-wide flex items-center justify-center gap-2">
-            Developed With <span class="text-brand-400 animate-pulse text-sm">💓</span> By Rajdeep Singh & Gemini AI
-        </p>
+    <footer class="w-full p-6 text-center z-10 animate-fade-in mt-auto">
+        <div class="flex flex-col items-center justify-center gap-2">
+            <p class="text-[13px] text-slate-400 font-medium tracking-wide flex items-center justify-center gap-1.5">
+                Developed With <span class="text-red-500 animate-pulse text-base leading-none">❤️</span> By ROnakks Development & Gemini AI
+            </p>
+            <p class="text-[11px] text-slate-500 font-medium tracking-wide">
+                Open source and available on <a href="https://github.com/ronakksdevelopment/SyncNotes-App" target="_blank" rel="noopener noreferrer" class="text-brand-400 hover:text-brand-300 transition-colors underline decoration-brand-400/30 underline-offset-2">GitHub</a>. Contributions welcome!
+            </p>
+        </div>
     </footer>
 
     <!-- Application Logic -->
     <script>
         const app = {
             peer: null,
-            conn: null,
+            connections: new Map(), // Map to hold multiple connections { peerId: connectionObj }
             currentSessionId: null,
             isHost: false,
-            isRemoteUpdate: false, // Prevents echo loops when updating textarea programmatically
+            isRemoteUpdate: false,
             typingTimeout: null,
             
             // Scanner
@@ -376,8 +407,10 @@
                 displayCode: document.getElementById('display-session-code'),
                 waitingCode: document.getElementById('waiting-session-code'),
                 textarea: document.getElementById('sync-textarea'),
+                charCount: document.getElementById('char-count'),
                 connStatus: document.getElementById('connection-status'),
                 statusLabel: document.getElementById('status-label'),
+                statusDot: document.getElementById('status-dot'),
                 qrOverlay: document.getElementById('editor-qr-overlay'),
                 qrContainer: document.getElementById('editor-qrcode'),
                 waitingQrContainer: document.getElementById('waiting-qrcode'),
@@ -387,7 +420,10 @@
                 syncStatusText: document.getElementById('sync-status-text'),
                 editorContainer: document.getElementById('editor-container'),
                 btnCreate: document.getElementById('btn-create'),
-                btnJoin: document.getElementById('btn-join')
+                btnJoin: document.getElementById('btn-join'),
+                peersModal: document.getElementById('peers-modal'),
+                peersList: document.getElementById('peers-list'),
+                modalPeerCount: document.getElementById('modal-peer-count')
             },
 
             // Boot
@@ -406,7 +442,7 @@
             checkUrlForInvite() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const joinCode = urlParams.get('join');
-                if (joinCode && joinCode.length === 6) {
+                if (joinCode && joinCode.length === 5) { // Updated to 5
                     this.els.joinInput.value = joinCode.toUpperCase();
                     setTimeout(() => this.joinWithCode(), 500);
                 }
@@ -416,21 +452,20 @@
             navigate(viewId) {
                 this.els.views.forEach(v => {
                     v.classList.remove('active');
-                    setTimeout(() => v.style.display = 'none', 400); 
+                    setTimeout(() => v.style.display = 'none', 300); 
                 });
                 
                 setTimeout(() => {
                     const target = document.getElementById(`view-${viewId}`);
                     target.style.display = 'flex';
-                    void target.offsetWidth; // Trigger reflow
+                    void target.offsetWidth; 
                     target.classList.add('active');
-                }, 400);
+                }, 300);
 
                 if (viewId !== 'scanner' && this.html5QrcodeScanner) {
                     this.closeScanner();
                 }
 
-                // Hide top right pill if not in editor
                 if (viewId !== 'editor') {
                     this.els.connStatus.classList.add('hidden');
                     this.els.connStatus.classList.remove('flex');
@@ -438,43 +473,47 @@
                 }
             },
 
-            // State UI Updates
-            updateConnectionUI(state) {
+            // State UI Updates (Multiple connections logic)
+            updateConnectionUI() {
+                const count = this.connections.size;
+                
                 this.els.connStatus.classList.remove('hidden');
                 this.els.connStatus.classList.add('flex');
                 
-                const dot = this.els.connStatus.querySelector('div');
-                
-                if (state === 'waiting') {
-                    this.els.connStatus.className = "flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-yellow-500/30 text-yellow-400";
-                    dot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-pulse";
+                if (count === 0 && this.isHost) {
+                    // Host waiting state
+                    this.els.connStatus.className = "flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-yellow-500/30 text-yellow-400 hover:bg-white/5 transition-colors cursor-pointer group";
+                    this.els.statusDot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-pulse";
                     this.els.statusLabel.textContent = "Waiting for Peer";
                     
                     this.els.waitingOverlay.classList.remove('hidden');
                     this.els.waitingOverlay.classList.add('flex');
-                    this.els.editorContainer.classList.remove('border-brand-400/50');
                     this.els.textarea.disabled = true;
-                } else if (state === 'connected') {
-                    this.els.connStatus.className = "flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-green-500/30 text-green-400";
-                    dot.className = "w-2 h-2 rounded-full bg-green-400";
-                    this.els.statusLabel.textContent = "P2P Linked";
+                } else {
+                    // Connected State (Host or Client)
+                    this.els.connStatus.className = "flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm border-green-500/30 text-green-400 hover:bg-white/5 transition-colors cursor-pointer group";
+                    this.els.statusDot.className = "w-2 h-2 rounded-full bg-green-400";
+                    
+                    if(this.isHost) {
+                        this.els.statusLabel.textContent = `${count} Device${count > 1 ? 's' : ''} Connected`;
+                    } else {
+                        this.els.statusLabel.textContent = "Linked to Host";
+                    }
                     
                     this.els.waitingOverlay.classList.add('hidden');
                     this.els.waitingOverlay.classList.remove('flex');
-                    this.els.editorContainer.classList.add('border-brand-400/50');
                     this.els.textarea.disabled = false;
                     this.els.textarea.focus();
                 }
+                
+                // Update Modal info
+                this.renderPeersList();
             },
 
-            // Session Generation
+            // Session Generation (5 Digit Number)
             generateCode() {
-                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-                let result = '';
-                for (let i = 0; i < 6; i++) {
-                    result += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                return result;
+                // Generates a string between "10000" and "99999"
+                return Math.floor(10000 + Math.random() * 90000).toString();
             },
 
             // ======= P2P HOSTING (PeerJS) =======
@@ -482,14 +521,14 @@
                 const code = this.generateCode();
                 this.currentSessionId = code;
                 this.isHost = true;
+                this.connections.clear();
                 
-                // Button UI
                 const originalText = this.els.btnCreate.innerHTML;
                 this.els.btnCreate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initializing...';
                 this.els.btnCreate.disabled = true;
 
-                // Create Peer ID prefixed to avoid global collisions on free server
-                this.peer = new Peer(`syncnotes-app-${code}`, { debug: 1 });
+                // Host ID
+                this.peer = new Peer(`syncnotes-app-${code}`);
 
                 this.peer.on('open', (id) => {
                     this.els.btnCreate.innerHTML = originalText;
@@ -500,20 +539,13 @@
                     this.generateQRs(code);
                     
                     this.navigate('editor');
-                    this.updateConnectionUI('waiting');
-                    this.showToast("Host room created. Waiting for peer...", "success");
+                    this.updateConnectionUI();
+                    this.showToast("Room open. Share the 5-digit code.", "success");
                 });
 
-                // When a client joins the host
-                this.peer.on('connection', (connection) => {
-                    // Prevent multiple connections (1-to-1 only)
-                    if (this.conn && this.conn.open) {
-                        connection.close();
-                        return;
-                    }
-
-                    this.conn = connection;
-                    this.setupConnectionHooks();
+                // When ANY client joins the host
+                this.peer.on('connection', (conn) => {
+                    this.setupConnectionHooks(conn);
                 });
 
                 this.peer.on('error', (err) => {
@@ -528,8 +560,8 @@
             // ======= P2P JOINING (PeerJS) =======
             joinWithCode() {
                 const code = this.els.joinInput.value.trim().toUpperCase();
-                if (code.length !== 6) {
-                    this.showToast("Please enter a valid 6-character code.", "error");
+                if (code.length !== 5) {
+                    this.showToast("Code must be exactly 5 digits.", "warning");
                     return;
                 }
                 this.joinSessionCore(code);
@@ -538,36 +570,21 @@
             joinSessionCore(code) {
                 this.currentSessionId = code;
                 this.isHost = false;
+                this.connections.clear();
 
                 const originalText = this.els.btnJoin.innerHTML;
                 this.els.btnJoin.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 this.els.btnJoin.disabled = true;
 
                 // Client gets a random Peer ID
-                this.peer = new Peer({ debug: 1 });
+                this.peer = new Peer();
 
                 this.peer.on('open', (id) => {
-                    // Connect to the specific Host ID
-                    this.conn = this.peer.connect(`syncnotes-app-${code}`);
-                    
-                    this.conn.on('open', () => {
-                        this.els.btnJoin.innerHTML = originalText;
-                        this.els.btnJoin.disabled = false;
-                        
-                        this.els.displayCode.textContent = code;
-                        this.generateQRs(code);
-                        this.saveToHistory(code); // Save valid connection
-                        
-                        this.navigate('editor');
-                        this.updateConnectionUI('connected');
-                        this.setupConnectionHooks();
-                        
-                        // Request current text state from Host
-                        this.conn.send({ type: 'request-sync' });
-                        this.showToast("Connected to Host!", "success");
-                    });
+                    // Connect to the Host
+                    const conn = this.peer.connect(`syncnotes-app-${code}`);
+                    this.setupConnectionHooks(conn);
 
-                    this.conn.on('error', (err) => {
+                    conn.on('error', (err) => {
                          this.els.btnJoin.innerHTML = originalText;
                          this.els.btnJoin.disabled = false;
                          this.showToast("Connection failed.", "error");
@@ -579,42 +596,70 @@
                     this.els.btnJoin.disabled = false;
                     
                     if (err.type === 'peer-unavailable') {
-                        this.showToast(`Host ${code} not found or closed.`, "error");
+                        this.showToast(`Workspace ${code} not found.`, "error");
                     } else {
-                        this.showToast("P2P Network error.", "error");
+                        this.showToast("Network error.", "error");
                     }
                     this.disconnect();
                 });
             },
 
-            // ======= SHARED P2P HOOKS =======
-            setupConnectionHooks() {
-                // If Host, UI becomes active when conn opens
-                if (this.isHost) {
-                    this.conn.on('open', () => {
-                        this.updateConnectionUI('connected');
-                        this.showToast("Peer joined successfully!", "success");
-                        // Send current text to joining peer
-                        this.conn.send({ type: 'text-sync', data: this.els.textarea.value });
-                    });
-                }
-
-                this.conn.on('data', (payload) => {
-                    if (payload.type === 'text-sync') {
-                        this.applyRemoteText(payload.data);
-                    } else if (payload.type === 'request-sync' && this.isHost) {
-                        this.conn.send({ type: 'text-sync', data: this.els.textarea.value });
+            // ======= SHARED P2P HOOKS (Handles Multiple Conns) =======
+            setupConnectionHooks(conn) {
+                conn.on('open', () => {
+                    // Add to map
+                    this.connections.set(conn.peer, conn);
+                    
+                    if (this.isHost) {
+                        this.showToast("New device joined!", "success");
+                        this.updateConnectionUI();
+                        // Send current text to the newly joined peer
+                        conn.send({ type: 'text-sync', data: this.els.textarea.value });
+                    } else {
+                        // We are a client that just successfully connected
+                        this.els.btnJoin.innerHTML = '<i class="fas fa-arrow-right"></i>';
+                        this.els.btnJoin.disabled = false;
+                        this.els.displayCode.textContent = this.currentSessionId;
+                        this.generateQRs(this.currentSessionId);
+                        this.saveToHistory(this.currentSessionId);
+                        
+                        this.navigate('editor');
+                        this.updateConnectionUI();
+                        this.showToast("Connected to Workspace!", "success");
+                        // Request initial sync
+                        conn.send({ type: 'request-sync' });
                     }
                 });
 
-                this.conn.on('close', () => {
-                    this.showToast("Peer disconnected.", "warning");
+                conn.on('data', (payload) => {
+                    if (payload.type === 'text-sync') {
+                        this.applyRemoteText(payload.data);
+                        
+                        // If Host receives text from a client, Relay to all OTHER clients
+                        if (this.isHost) {
+                            this.connections.forEach((c, id) => {
+                                if (id !== conn.peer && c.open) {
+                                    c.send({ type: 'text-sync', data: payload.data });
+                                }
+                            });
+                        }
+                    } else if (payload.type === 'request-sync' && this.isHost) {
+                        conn.send({ type: 'text-sync', data: this.els.textarea.value });
+                    } else if (payload.type === 'kicked' && !this.isHost) {
+                        this.showToast("Host disconnected you from the session.", "error");
+                        this.disconnect();
+                    }
+                });
+
+                conn.on('close', () => {
+                    this.connections.delete(conn.peer);
+                    
                     if (this.isHost) {
-                        // Host goes back to waiting
-                        this.conn = null;
-                        this.updateConnectionUI('waiting');
+                        this.showToast("A device disconnected.", "info");
+                        this.updateConnectionUI();
                     } else {
-                        // Client is kicked out
+                        // Client lost the host
+                        this.showToast("Host ended the session.", "warning");
                         this.disconnect();
                     }
                 });
@@ -623,47 +668,51 @@
             // Editor Sync Logic
             setupEditorListeners() {
                 this.els.textarea.addEventListener('input', (e) => {
-                    // Prevent echo looping: Do not broadcast if we are currently applying remote text
+                    // Update char count natively
+                    this.els.charCount.textContent = `${this.els.textarea.value.length} chars`;
+
                     if (this.isRemoteUpdate) return;
                     
-                    this.els.syncStatusText.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-400 mr-2"></i> Syncing P2P...`;
+                    this.els.syncStatusText.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-400 mr-2"></i> Syncing...`;
                     
                     clearTimeout(this.typingTimeout);
                     this.typingTimeout = setTimeout(() => {
-                        if (this.conn && this.conn.open) {
-                            this.conn.send({ type: 'text-sync', data: this.els.textarea.value });
-                            this.els.syncStatusText.innerHTML = `<i class="fas fa-check-double text-green-400 mr-2"></i> Sent directly to peer`;
+                        if (this.connections.size > 0) {
+                            // Broadcast to all active connections
+                            this.connections.forEach(c => {
+                                if(c.open) c.send({ type: 'text-sync', data: this.els.textarea.value });
+                            });
+                            this.els.syncStatusText.innerHTML = `<i class="fas fa-check text-green-400 mr-2"></i> Synced to peers`;
                         } else {
-                            this.els.syncStatusText.innerHTML = `<i class="fas fa-exclamation-triangle text-yellow-400 mr-2"></i> Not connected`;
+                            this.els.syncStatusText.innerHTML = `<i class="fas fa-save text-slate-400 mr-2"></i> Saved locally`;
                         }
-                    }, 50); // Very low latency debounce for P2P
+                    }, 50); 
                 });
             },
 
             applyRemoteText(newText) {
                 if (this.els.textarea.value === newText) return;
 
-                this.isRemoteUpdate = true; // Lock outgoing syncs
-                
-                // Smart merge to preserve cursor
-                const start = this.els.textarea.selectionStart;
-                const end = this.els.textarea.selectionEnd;
+                this.isRemoteUpdate = true;
                 
                 this.els.textarea.value = newText || "";
+                this.els.charCount.textContent = `${this.els.textarea.value.length} chars`;
                 
                 try {
-                    this.els.textarea.setSelectionRange(start, end);
+                    // Automatically move cursor to the end of the text so users can continue typing from the last sync
+                    const textLength = this.els.textarea.value.length;
+                    this.els.textarea.setSelectionRange(textLength, textLength);
+                    this.els.textarea.scrollTop = this.els.textarea.scrollHeight; // Auto-scroll to the bottom
                 } catch(e){} 
 
-                this.els.syncStatusText.innerHTML = `<i class="fas fa-download text-brand-400 mr-2"></i> Received from peer`;
+                this.els.syncStatusText.innerHTML = `<i class="fas fa-bolt text-brand-accent mr-2"></i> Incoming update applied`;
                 
-                // Unlock outgoing syncs shortly after
                 setTimeout(() => { this.isRemoteUpdate = false; }, 10);
             },
 
             clearText() {
                 this.els.textarea.value = '';
-                this.els.textarea.dispatchEvent(new Event('input')); // Trigger sync
+                this.els.textarea.dispatchEvent(new Event('input')); 
             },
 
             copyText() {
@@ -672,7 +721,7 @@
                     return;
                 }
                 navigator.clipboard.writeText(this.els.textarea.value).then(() => {
-                    this.showToast("Text copied!", "success");
+                    this.showToast("Note Copied!", "success");
                 }).catch(() => {
                     const textArea = document.createElement("textarea");
                     textArea.value = this.els.textarea.value;
@@ -680,43 +729,51 @@
                     textArea.select();
                     document.execCommand("copy");
                     textArea.remove();
-                    this.showToast("Text copied!", "success");
+                    this.showToast("Note Copied!", "success");
                 });
             },
 
-            copySessionCode() {
+            // Clean Copy Link Share logic
+            copySessionShare() {
                 if(!this.currentSessionId) return;
                 
-                // Generate shareable URL
                 const shareUrl = `${window.location.origin}${window.location.pathname}?join=${this.currentSessionId}`;
+                const shareText = `SyncNotes Invite: ${shareUrl}`;
                 
-                navigator.clipboard.writeText(shareUrl).then(() => {
+                navigator.clipboard.writeText(shareText).then(() => {
                     this.showToast("Invite Link Copied!", "success");
                 }).catch(() => {
+                     const textArea = document.createElement("textarea");
+                     textArea.value = shareText;
+                     document.body.appendChild(textArea);
+                     textArea.select();
                      document.execCommand("copy");
+                     textArea.remove();
                      this.showToast("Invite Link Copied!", "success");
                 });
             },
 
             disconnect() {
-                if (this.conn) {
-                    this.conn.close();
-                    this.conn = null;
-                }
+                // Close all peer connections gracefully
+                this.connections.forEach(c => c.close());
+                this.connections.clear();
+
                 if (this.peer) {
                     this.peer.destroy();
                     this.peer = null;
                 }
+                
                 this.currentSessionId = null;
                 this.isHost = false;
                 this.els.textarea.value = '';
+                this.els.charCount.textContent = `0 chars`;
                 this.els.joinInput.value = '';
                 
-                // Reset URL if it had a join param
                 if(window.location.search.includes('join=')) {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
 
+                this.closePeersModal();
                 this.navigate('home');
             },
 
@@ -729,10 +786,10 @@
                 
                 const config = {
                     text: joinUrl,
-                    width: 160,
-                    height: 160,
-                    colorDark : "#0f172a", 
-                    colorLight : "#fef3c7", // Match brand paper theme
+                    width: 180,
+                    height: 180,
+                    colorDark : "#0b1120", 
+                    colorLight : "#fffbeb", 
                     correctLevel : QRCode.CorrectLevel.M
                 };
 
@@ -759,27 +816,25 @@
                         { facingMode: "environment" }, 
                         config,
                         (decodedText, decodedResult) => {
-                            // On Success - check if it's a URL or direct code
                             let parsedCode = decodedText;
                             
                             try {
                                 const url = new URL(decodedText);
                                 const joinParam = url.searchParams.get('join');
-                                if(joinParam && joinParam.length === 6) parsedCode = joinParam;
-                            } catch(e) { } // Not a URL
+                                if(joinParam && joinParam.length === 5) parsedCode = joinParam;
+                            } catch(e) { }
 
-                            if(parsedCode && parsedCode.length === 6) {
+                            if(parsedCode && parsedCode.length === 5) {
                                 this.html5QrcodeScanner.stop().then(() => {
-                                    this.showToast("QR Scanned successfully!", "success");
+                                    this.showToast("QR Code recognized!", "success");
                                     this.joinSessionCore(parsedCode.toUpperCase());
                                 });
                             } else {
                                 this.showToast("Invalid SyncNotes QR code.", "error");
                             }
                         },
-                        (errorMessage) => { /* ignore routine camera errors */ }
+                        (errorMessage) => { }
                     ).catch((err) => {
-                        console.error("Camera error:", err);
                         this.showToast("Camera access denied.", "error");
                         this.navigate('home');
                     });
@@ -798,11 +853,78 @@
                 }
             },
 
-            // Local History (Just remembers past peer IDs for quick reconnects)
+            // Peer Management Modal
+            openPeersModal() {
+                this.els.peersModal.classList.remove('hidden');
+                this.els.peersModal.classList.add('flex');
+                setTimeout(() => {
+                    this.els.peersModal.classList.remove('opacity-0');
+                    this.els.peersModal.children[0].classList.add('animate-modal-enter');
+                }, 10);
+            },
+
+            closePeersModal() {
+                this.els.peersModal.classList.add('opacity-0');
+                this.els.peersModal.children[0].classList.remove('animate-modal-enter');
+                setTimeout(() => {
+                    this.els.peersModal.classList.add('hidden');
+                    this.els.peersModal.classList.remove('flex');
+                }, 300);
+            },
+
+            renderPeersList() {
+                this.els.modalPeerCount.textContent = this.connections.size;
+                
+                if(this.connections.size === 0) {
+                    this.els.peersList.innerHTML = `<div class="text-center text-slate-500 py-4 text-sm">No devices connected yet.</div>`;
+                    return;
+                }
+
+                let html = '';
+                let index = 1;
+                this.connections.forEach((c, peerId) => {
+                    // Generate a readable name from ID
+                    const readableName = `Device-${peerId.substring(peerId.length - 4).toUpperCase()}`;
+                    
+                    html += `
+                    <div class="flex items-center justify-between bg-black/40 border border-white/5 p-3 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-brand-accent/20 text-brand-accent flex items-center justify-center text-xs">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <span class="text-sm font-medium text-slate-200">${readableName}</span>
+                        </div>
+                        ${this.isHost ? `
+                        <button onclick="app.kickPeer('${peerId}')" class="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors border border-red-500/10">
+                            Kick
+                        </button>` : `<span class="text-xs text-green-400">Active</span>`}
+                    </div>`;
+                    index++;
+                });
+
+                this.els.peersList.innerHTML = html;
+            },
+
+            kickPeer(peerId) {
+                if(!this.isHost) return;
+                const c = this.connections.get(peerId);
+                if(c) {
+                    // Send message before closing
+                    c.send({type: 'kicked'});
+                    setTimeout(() => {
+                        c.close();
+                        this.connections.delete(peerId);
+                        this.updateConnectionUI();
+                        this.showToast("Device kicked.", "info");
+                    }, 200);
+                }
+            },
+
+            // Local History 
             saveToHistory(sessionId) {
                 let history = [];
                 try {
-                    const stored = localStorage.getItem('syncNotes_p2p_history');
+                    const stored = localStorage.getItem('syncNotes_p2p_history_v2');
                     if (stored) history = JSON.parse(stored);
                 } catch(e) {}
                 
@@ -810,7 +932,7 @@
                 history.unshift({ id: sessionId, time: Date.now() });
                 if (history.length > 5) history.pop();
                 
-                localStorage.setItem('syncNotes_p2p_history', JSON.stringify(history));
+                localStorage.setItem('syncNotes_p2p_history_v2', JSON.stringify(history));
                 this.renderHistory();
             },
 
@@ -821,7 +943,7 @@
             renderHistory() {
                 let history = [];
                 try {
-                    const stored = localStorage.getItem('syncNotes_p2p_history');
+                    const stored = localStorage.getItem('syncNotes_p2p_history_v2');
                     if (stored) history = JSON.parse(stored);
                 } catch(e) {}
 
@@ -834,43 +956,18 @@
                 this.els.recentContainer.classList.add('flex');
                 
                 this.els.recentList.innerHTML = history.map(h => `
-                    <button onclick="app.els.joinInput.value='${h.id}'; app.joinWithCode()" class="flex-shrink-0 glass-panel px-5 py-3 rounded-xl hover:bg-white/10 transition-colors flex flex-col items-start gap-1 group border border-white/5 hover:border-brand-400/50">
-                        <span class="font-mono font-bold tracking-widest text-white group-hover:text-brand-400 transition-colors">${h.id}</span>
-                        <span class="text-[10px] text-gray-500 uppercase">Reconnect</span>
+                    <button onclick="app.els.joinInput.value='${h.id}'; app.joinWithCode()" class="flex-shrink-0 bg-white/5 px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors flex items-center gap-3 border border-white/5">
+                        <span class="font-mono font-bold tracking-widest text-slate-300">${h.id}</span>
+                        <div class="w-1 h-1 rounded-full bg-brand-400"></div>
+                        <span class="text-[10px] text-slate-500 uppercase tracking-wide">Join</span>
                     </button>
                 `).join('');
             },
 
             clearHistory() {
-                localStorage.removeItem('syncNotes_p2p_history');
+                localStorage.removeItem('syncNotes_p2p_history_v2');
                 this.renderHistory();
                 this.showToast("History cleared", "success");
-            },
-
-            // Utilities
-            showToast(message, type = 'info') {
-                this.els.toastMsg.textContent = message;
-                
-                this.els.toast.className = `fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-100 translate-y-0 pointer-events-none`;
-                
-                if (type === 'success') {
-                    this.els.toastIcon.className = 'fas fa-check-circle text-green-400';
-                    this.els.toast.firstElementChild.className = 'glass-panel px-6 py-3 rounded-full flex items-center gap-3 shadow-lg border-green-500/50';
-                } else if (type === 'error') {
-                    this.els.toastIcon.className = 'fas fa-exclamation-circle text-brand-400';
-                    this.els.toast.firstElementChild.className = 'glass-panel px-6 py-3 rounded-full flex items-center gap-3 shadow-lg border-brand-500/50';
-                } else if (type === 'warning') {
-                    this.els.toastIcon.className = 'fas fa-exclamation-triangle text-brand-accent';
-                    this.els.toast.firstElementChild.className = 'glass-panel px-6 py-3 rounded-full flex items-center gap-3 shadow-lg border-brand-accent/50';
-                } else {
-                    this.els.toastIcon.className = 'fas fa-info-circle text-brand-400';
-                    this.els.toast.firstElementChild.className = 'glass-panel px-6 py-3 rounded-full flex items-center gap-3 shadow-lg border-brand-500/50';
-                }
-
-                setTimeout(() => {
-                    this.els.toast.classList.remove('opacity-100', 'translate-y-0');
-                    this.els.toast.classList.add('opacity-0', 'translate-y-[-20px]');
-                }, 3000);
             }
         };
 
@@ -878,14 +975,14 @@
         window.addEventListener('DOMContentLoaded', () => {
             app.init();
             
-            // Allow hitting "Enter" on the join code input
+            // Allow hitting "Enter"
             document.getElementById('join-code-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     app.joinWithCode();
                 }
             });
 
-            // Close QR overlay when clicking outside in editor
+            // Close Overlays
             document.addEventListener('click', (e) => {
                 const overlay = document.getElementById('editor-qr-overlay');
                 const trigger = document.querySelector('[title="Show QR Code"]');
@@ -893,6 +990,11 @@
                     !overlay.contains(e.target) && 
                     !trigger && trigger.contains(e.target)) {
                     overlay.classList.add('hidden');
+                }
+
+                const modal = document.getElementById('peers-modal');
+                if(!modal.classList.contains('hidden') && e.target === modal) {
+                    app.closePeersModal();
                 }
             });
         });
