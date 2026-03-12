@@ -426,6 +426,8 @@
             typingTimeout: null,
             connectionTimeout: null, 
             userName: '', // Mandatory nickname
+            isJoining: false, // Prevents double-join from scanner
+            qrErrorDebounce: false, // Throttles scanner error toasts
             
             // Premium public STUN servers for 100% reliable WebRTC connections over NAT
             peerConfig: {
@@ -926,6 +928,7 @@
                 this.els.textarea.value = '';
                 this.els.charCount.textContent = `0 chars`;
                 this.els.joinInput.value = '';
+                this.isJoining = false;
                 
                 if(window.location.search.includes('join=')) {
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -1001,46 +1004,62 @@
                         { facingMode: "environment" }, 
                         config,
                         (decodedText, decodedResult) => {
+                            if (this.isJoining) return; // Prevent multiple scans firing
+
                             let parsedCode = null;
                             
-                            // Highly robust scanner parsing. 
-                            // Looks for exactly 5 digits anywhere in the scanned text/url
-                            const match = decodedText.match(/\b\d{5}\b/);
-                            if (match) {
-                                parsedCode = match[0];
-                            } else {
-                                // Fallback URL param extraction just in case
-                                try {
-                                    const url = new URL(decodedText);
-                                    const joinParam = url.searchParams.get('join');
-                                    if (joinParam && /^\d{5}$/.test(joinParam)) parsedCode = joinParam;
-                                } catch(e) { }
+                            // Robust scanner parsing
+                            try {
+                                const url = new URL(decodedText);
+                                const joinParam = url.searchParams.get('join');
+                                if (joinParam && /^\d{5}$/.test(joinParam)) parsedCode = joinParam;
+                            } catch(e) { }
+
+                            // If URL parsing didn't find it, look for ANY 5 digit number in the scan
+                            if (!parsedCode) {
+                                const match = decodedText.match(/(?<!\d)\d{5}(?!\d)/);
+                                if (match) parsedCode = match[0];
                             }
 
                             if(parsedCode && /^\d{5}$/.test(parsedCode)) {
-                                this.html5QrcodeScanner.stop().then(() => {
-                                    this.showToast("QR Code recognized!", "success");
+                                this.isJoining = true;
+                                this.showToast("QR Code recognized!", "success");
+                                
+                                // Extremely safe camera stop - never blocks the join process
+                                try {
+                                    this.html5QrcodeScanner.stop().catch(e => {}).finally(() => {
+                                        this.joinSessionCore(parsedCode);
+                                        setTimeout(() => { this.isJoining = false; }, 2000);
+                                    });
+                                } catch(e) {
                                     this.joinSessionCore(parsedCode);
-                                });
+                                    this.isJoining = false;
+                                }
                             } else {
-                                this.showToast("Invalid SyncNotes QR code.", "error");
+                                if(!this.qrErrorDebounce) {
+                                    this.showToast("Invalid SyncNotes QR code.", "error");
+                                    this.qrErrorDebounce = true;
+                                    setTimeout(() => { this.qrErrorDebounce = false; }, 3000);
+                                }
                             }
                         },
                         (errorMessage) => { }
                     ).catch((err) => {
-                        this.showToast("Camera access denied.", "error");
+                        this.showToast("Camera access denied or busy.", "error");
                         this.navigate('home');
                     });
-                }, 400);
+                }, 400); // Wait for CSS transition to finish before attaching camera
             },
 
             closeScanner() {
                 if (this.html5QrcodeScanner) {
-                    this.html5QrcodeScanner.stop().then(() => {
+                    try {
+                        this.html5QrcodeScanner.stop().catch(e => {}).finally(() => {
+                            this.navigate('home');
+                        });
+                    } catch(e) {
                         this.navigate('home');
-                    }).catch(err => {
-                        this.navigate('home');
-                    });
+                    }
                 } else {
                     this.navigate('home');
                 }
@@ -1171,7 +1190,18 @@
         window.addEventListener('DOMContentLoaded', () => {
             app.init();
             
-            // Allow hitting "Enter"
+            // Allow hitting "Enter" on nickname to auto-join if code is filled
+            document.getElementById('nickname-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    if (app.els.joinInput.value.length === 5) {
+                        app.joinWithCode();
+                    } else {
+                        app.els.nicknameInput.blur();
+                    }
+                }
+            });
+
+            // Allow hitting "Enter" on code input
             document.getElementById('join-code-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     app.joinWithCode();
