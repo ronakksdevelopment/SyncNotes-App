@@ -370,7 +370,7 @@
     </main>
 
     <!-- Peers Management Modal -->
-    <div id="peers-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-brand-dark/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+    <div id="peers-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-brand-dark/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
         <div class="glass-panel p-6 rounded-3xl w-full max-w-sm m-4 transform scale-95 transition-transform duration-300 bg-slate-900/50 border border-white/10 shadow-2xl">
             <div class="flex justify-between items-center mb-5 border-b border-white/5 pb-4">
                 <h3 class="text-xl font-bold text-white"><i class="fas fa-users text-brand-400 mr-2"></i> Connected Users</h3>
@@ -382,6 +382,23 @@
             </div>
             
             <button onclick="app.closePeersModal()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors border border-white/5">Close Panel</button>
+        </div>
+    </div>
+
+    <!-- Removed from Session Modal -->
+    <div id="removed-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-brand-dark/90 backdrop-blur-md transition-opacity duration-300 opacity-0">
+        <div class="glass-panel p-8 rounded-3xl w-full max-w-md m-4 text-center border border-red-500/30 shadow-2xl shadow-red-500/20">
+            <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+                <i class="fas fa-ban text-4xl text-red-500"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-3">Session Access Revoked</h3>
+            <p class="text-slate-300 mb-8 leading-relaxed">
+                You have been removed by host <span id="removed-host-name" class="font-bold text-brand-400"></span>.<br><br>
+                You cannot join this specific session anymore. Please generate or join a new, different session.
+            </p>
+            <button onclick="app.closeRemovedModal()" class="w-full py-3.5 rounded-xl bg-red-500 hover:bg-red-400 text-white font-medium transition-colors shadow-[0_0_15px_rgba(239,68,68,0.3)] active:scale-95">
+                Understood
+            </button>
         </div>
     </div>
 
@@ -402,12 +419,13 @@
         const app = {
             peer: null,
             connections: new Map(), // Map to hold multiple connections { peerId: connectionObj }
+            bannedPeers: new Set(), // Host tracks who has been removed
             currentSessionId: null,
             isHost: false,
             isRemoteUpdate: false,
             typingTimeout: null,
             connectionTimeout: null, 
-            userName: 'GUEST',
+            userName: '', // Mandatory nickname
             
             // Premium public STUN servers for 100% reliable WebRTC connections over NAT
             peerConfig: {
@@ -451,7 +469,9 @@
                 btnJoin: document.getElementById('btn-join'),
                 peersModal: document.getElementById('peers-modal'),
                 peersList: document.getElementById('peers-list'),
-                modalPeerCount: document.getElementById('modal-peer-count')
+                modalPeerCount: document.getElementById('modal-peer-count'),
+                removedModal: document.getElementById('removed-modal'),
+                removedHostName: document.getElementById('removed-host-name')
             },
 
             // Boot
@@ -565,6 +585,14 @@
                 return Math.floor(10000 + Math.random() * 90000).toString();
             },
 
+            // Host Broadcast Helper (Sends visual notifications to everyone)
+            broadcastNotification(message) {
+                this.showToast(message, "info"); // Show locally for Host
+                this.connections.forEach(c => {
+                    if (c.open) c.send({ type: 'notification', message: message });
+                });
+            },
+
             // ======= P2P HOSTING (PeerJS) =======
             createSession() {
                 if (!this.validateName()) return;
@@ -573,6 +601,7 @@
                 this.currentSessionId = code;
                 this.isHost = true;
                 this.connections.clear();
+                this.bannedPeers.clear();
                 
                 const originalText = this.els.btnCreate.innerHTML;
                 this.els.btnCreate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initializing...';
@@ -600,8 +629,15 @@
                     let isOpened = false;
 
                     const handleOpen = (name) => {
-                        if (isOpened) return; // Prevent double execution
+                        if (isOpened) return; 
                         isOpened = true;
+                        
+                        // Reject connection if user was previously removed/banned
+                        if (this.bannedPeers.has(conn.peer)) {
+                            conn.send({ type: 'banned', hostName: this.userName });
+                            setTimeout(() => conn.close(), 500);
+                            return;
+                        }
                         
                         // Grab nickname from payload or metadata
                         conn.customName = name || (conn.metadata && conn.metadata.name) || 'GUEST';
@@ -609,7 +645,9 @@
                         
                         // Force UI Update to clear popup immediately 
                         this.updateConnectionUI();
-                        this.showToast(`${conn.customName} joined!`, "success");
+                        
+                        // Notify everyone
+                        this.broadcastNotification(`${conn.customName} joined the workspace!`);
                     };
 
                     // PeerJS 'open' event can sometimes fail to fire for the host. 
@@ -642,10 +680,13 @@
 
                     conn.on('close', () => {
                         const name = conn.customName || 'A user';
-                        this.connections.delete(conn.peer);
-                        if (this.isHost) {
-                            this.showToast(`${name} left.`, "info");
-                            this.updateConnectionUI();
+                        // Only broadcast leave if it wasn't an intentional kick
+                        if (this.connections.has(conn.peer)) {
+                            this.connections.delete(conn.peer);
+                            if (this.isHost) {
+                                this.broadcastNotification(`${name} left the workspace.`);
+                                this.updateConnectionUI();
+                            }
                         }
                     });
 
@@ -731,7 +772,6 @@
                         
                         this.navigate('editor');
                         this.updateConnectionUI();
-                        this.showToast("Connected to Workspace!", "success");
                         
                         // Fire ping immediately with name to wake up Host UI
                         conn.send({ type: 'request-sync', name: this.userName });
@@ -740,15 +780,20 @@
                     conn.on('data', (payload) => {
                         if (payload.type === 'text-sync') {
                             this.applyRemoteText(payload.data);
-                        } else if (payload.type === 'kicked') {
-                            this.showToast("Host disconnected you from the session.", "error");
-                            this.disconnect();
+                        } else if (payload.type === 'notification') {
+                            this.showToast(payload.message, "info");
+                        } else if (payload.type === 'kicked' || payload.type === 'banned') {
+                            this.showRemovedPopup(payload.hostName);
                         }
                     });
 
                     conn.on('close', () => {
-                        this.showToast("Host ended the session.", "warning");
-                        this.disconnect();
+                        // The host triggers close when the session ends gracefully.
+                        // (Kicked logic is handled via 'data' event before close).
+                        if(this.currentSessionId) {
+                            this.showToast("Host ended the session.", "warning");
+                            this.disconnect();
+                        }
                     });
 
                     conn.on('error', (err) => {
@@ -890,6 +935,31 @@
                 this.navigate('home');
             },
 
+            // Handles the Banned/Removed specific UI popup
+            showRemovedPopup(hostName) {
+                // Cleanly disconnect without triggering standard leave messages
+                this.disconnect(); 
+                
+                this.els.removedHostName.textContent = hostName || 'the Host';
+                
+                // Ensure it pops up after the view transition to home completes
+                setTimeout(() => {
+                    this.els.removedModal.classList.remove('hidden');
+                    this.els.removedModal.classList.add('flex');
+                    setTimeout(() => {
+                        this.els.removedModal.classList.remove('opacity-0');
+                    }, 10);
+                }, 350); 
+            },
+
+            closeRemovedModal() {
+                this.els.removedModal.classList.add('opacity-0');
+                setTimeout(() => {
+                    this.els.removedModal.classList.add('hidden');
+                    this.els.removedModal.classList.remove('flex');
+                }, 300);
+            },
+
             // QR Generation
             generateQRs(code) {
                 const joinUrl = `${this.getBaseUrl()}?join=${code}`;
@@ -1016,8 +1086,8 @@
                             <span class="text-sm font-bold text-slate-200 tracking-wide">${readableName}</span>
                         </div>
                         ${this.isHost ? `
-                        <button onclick="app.kickPeer('${peerId}')" class="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors border border-red-500/10 active:scale-95 shrink-0 font-medium">
-                            Kick
+                        <button onclick="app.removePeer('${peerId}')" class="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors border border-red-500/10 active:scale-95 shrink-0 font-medium">
+                            Remove
                         </button>` : `<span class="text-xs text-green-400 font-medium shrink-0">Active</span>`}
                     </div>`;
                 });
@@ -1025,17 +1095,23 @@
                 this.els.peersList.innerHTML = html;
             },
 
-            kickPeer(peerId) {
+            removePeer(peerId) {
                 if(!this.isHost) return;
                 const c = this.connections.get(peerId);
                 if(c) {
-                    // Send message before closing
-                    c.send({type: 'kicked'});
+                    // Add to ban list so they cannot instantly rejoin
+                    this.bannedPeers.add(peerId);
+                    
+                    const name = c.customName || 'User';
+                    
+                    // Send kicked message allowing client to cleanly display overlay
+                    c.send({type: 'kicked', hostName: this.userName});
+                    
                     setTimeout(() => {
                         c.close();
                         this.connections.delete(peerId);
                         this.updateConnectionUI();
-                        this.showToast(`${c.customName || 'User'} kicked.`, "info");
+                        this.broadcastNotification(`${name} was removed by the Host.`);
                     }, 200);
                 }
             },
