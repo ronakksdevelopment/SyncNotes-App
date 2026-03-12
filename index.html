@@ -643,9 +643,14 @@
                 });
             },
 
-            // ======= SHARED P2P HOOKS (Handles Multiple Conns) =======
+            // ======= SHARED P2P HOOKS (Handles Multiple Conns & Race Conditions) =======
             setupConnectionHooks(conn) {
-                conn.on('open', () => {
+                let isOpened = false;
+
+                const handleConnectionOpened = () => {
+                    if (isOpened) return; // Prevent double firing
+                    isOpened = true;
+
                     clearTimeout(this.connectionTimeout); // Clear safety timeout on success
                     
                     // Add to active connections map
@@ -670,9 +675,24 @@
                         // Request initial sync
                         conn.send({ type: 'request-sync' });
                     }
-                });
+                };
+
+                // PeerJS 'open' event can sometimes race and fire before the listener is attached,
+                // or if reliable: true is set, it might already be open.
+                if (conn.open) {
+                    handleConnectionOpened();
+                } else {
+                    conn.on('open', handleConnectionOpened);
+                }
 
                 conn.on('data', (payload) => {
+                    // BUG FIX: Failsafe. If we receive data, the connection is definitely open.
+                    // This fixes the issue where the Host gets stuck on the Waiting Screen because 
+                    // the WebRTC channel established silently in the background.
+                    if (!isOpened) {
+                        handleConnectionOpened();
+                    }
+
                     if (payload.type === 'text-sync') {
                         this.applyRemoteText(payload.data);
                         
@@ -703,6 +723,12 @@
                         this.showToast("Host ended the session.", "warning");
                         this.disconnect();
                     }
+                });
+
+                conn.on('error', (err) => {
+                    console.error("Connection Error:", err);
+                    this.connections.delete(conn.peer);
+                    this.updateConnectionUI();
                 });
             },
 
@@ -741,7 +767,7 @@
                 this.els.charCount.textContent = `${this.els.textarea.value.length} chars`;
                 
                 try {
-                    // BUG FIX: Automatically force the cursor/blinking line to the very end 
+                    // Automatically force the cursor/blinking line to the very end 
                     // of the document when receiving an update, so writing is seamless.
                     const textLength = this.els.textarea.value.length;
                     this.els.textarea.focus(); 
@@ -864,7 +890,7 @@
                         (decodedText, decodedResult) => {
                             let parsedCode = null;
                             
-                            // BUG FIX: Highly robust scanner parsing. 
+                            // Highly robust scanner parsing. 
                             // Looks for exactly 5 digits anywhere in the scanned text/url
                             const match = decodedText.match(/\b\d{5}\b/);
                             if (match) {
